@@ -1,6 +1,9 @@
 import { Redis } from "@upstash/redis";
 
-const kv = Redis.fromEnv();
+const kv = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
+});
 
 const POOL_KEY = "corporatese:pool";
 const MAX_POOL_SIZE = 500;
