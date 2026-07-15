@@ -413,6 +413,52 @@ const START_LABELS = [
   "Booka la partita",
 ];
 
+// ---- Loader a schermo intero durante la generazione delle domande --------
+const LOADING_MESSAGES = [
+  "Sto brifando l'IA...",
+  "Allineamento in corso sui deliverable...",
+  "Recruiting stagisti per generare gergo fresco...",
+  "Sincronizzo con il reparto sinergie...",
+  "Schedulo un call con Claude...",
+  "Derisckando la roadmap delle domande...",
+];
+function LoadingOverlay() {
+  const [msgIndex, setMsgIndex] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMsgIndex((i) => (i + 1) % LOADING_MESSAGES.length);
+    }, 1400);
+    return () => clearInterval(interval);
+  }, []);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 px-6"
+      style={{ background: "#241F3D" }}
+    >
+      <Mascot mood="neutral" />
+      <p className="display text-xs text-center" style={{ color: "#E8A33D", lineHeight: 1.8 }}>
+        {LOADING_MESSAGES[msgIndex]}
+      </p>
+      <div className="w-40 h-2 rounded-full overflow-hidden" style={{ background: "#3B3357" }}>
+        <div
+          style={{
+            width: "40%",
+            height: "100%",
+            background: "#E8A33D",
+            animation: "loading-slide 1.1s ease-in-out infinite",
+          }}
+        />
+      </div>
+      <style>{`
+        @keyframes loading-slide {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(350%); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function LogoIntro({ onDone }) {
   const [phase, setPhase] = useState("words"); // words | stamp | done
   const [wordIndex, setWordIndex] = useState(0);
@@ -917,11 +963,21 @@ export default function CorporateseGame() {
     `}</style>
   );
 
+  // Il loader copre qualsiasi schermata mentre generiamo domande nuove
+  if (isGenerating) {
+    return (
+      <>
+        {fonts}
+        <LoadingOverlay />
+      </>
+    );
+  }
+
   // ---- COPERTINA ----------------------------------------------------------
   if (screen === "cover") {
     return (
       <div
-        className="crt-scanlines min-h-screen w-full flex flex-col items-center justify-between py-10 px-6"
+        className="crt-scanlines min-h-screen w-full flex flex-col items-center py-10 px-6 overflow-y-auto"
         style={{
           background: `
             radial-gradient(circle at 20% 30%, rgba(232,163,61,0.18) 0%, transparent 25%),
@@ -933,12 +989,11 @@ export default function CorporateseGame() {
       >
         {fonts}
         {showLogoIntro && <LogoIntro onDone={() => setShowLogoIntro(false)} />}
-        <div />
-        <div className="flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-6 mt-8">
           <Logo />
           <Mascot mood="happy" />
         </div>
-        <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+        <div className="flex flex-col items-center gap-4 w-full max-w-xs mt-10 mb-6">
           {!showLogoIntro && (
             <p className="display blink text-xs" style={{ color: "#F5EAD0" }}>
               ▶ SEI PRONTO?
