@@ -414,47 +414,88 @@ const START_LABELS = [
 ];
 
 // ---- Loader a schermo intero durante la generazione delle domande --------
-const LOADING_MESSAGES = [
-  "Sto brifando l'IA...",
-  "Allineamento in corso sui deliverable...",
+// Tre fasce, legate a quanto è avanzata la barra: all'inizio prendono in giro
+// chi ha fretta, a metà scherzano sul gergo stesso, alla fine sul ritardo.
+const LOADING_MESSAGES_EARLY = [
+  "Te lo aspettavi per ieri, eh?",
+  "ASAP è partito ieri, tu sei arrivato oggi.",
+  "Ho detto 5 minuti. Intendevo 5 minuti aziendali.",
+  "Stiamo ancora schedulando la call per iniziare.",
+];
+const LOADING_MESSAGES_MID = [
+  "Sto brifando l'IA sul brief del brief...",
   "Recruiting stagisti per generare gergo fresco...",
   "Sincronizzo con il reparto sinergie...",
-  "Schedulo un call con Claude...",
   "Derisckando la roadmap delle domande...",
+  "Il deliverable è in delivering...",
 ];
+const LOADING_MESSAGES_LATE = [
+  "Quasi pronto, come sempre negli ultimi 10 minuti.",
+  "Stiamo chiudendo, promesso, come ogni volta.",
+  "Ultimo allineamento prima del rilascio.",
+  "Ci siamo quasi, fidati del gergo.",
+];
+// Durata stimata del caricamento in millisecondi: presa da esperienza reale
+// (la generazione IA di solito impiega 4-9 secondi). Non è un tempo garantito,
+// solo una stima per far vedere una barra che si riempie in modo credibile.
+const ESTIMATED_LOAD_MS = 8000;
+
 function LoadingOverlay() {
   const [msgIndex, setMsgIndex] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setMsgIndex((i) => (i + 1) % LOADING_MESSAGES.length);
+    const msgInterval = setInterval(() => {
+      setMsgIndex((i) => i + 1);
     }, 1400);
-    return () => clearInterval(interval);
+    const startedAt = Date.now();
+    const tickInterval = setInterval(() => {
+      setElapsed(Date.now() - startedAt);
+    }, 150);
+    return () => {
+      clearInterval(msgInterval);
+      clearInterval(tickInterval);
+    };
   }, []);
+
+  // La barra sale in modo credibile ma non promette mai il 100% prima del
+  // vero completamento: si ferma al 96% e aspetta lì se ci mette più del previsto.
+  const rawPercent = (elapsed / ESTIMATED_LOAD_MS) * 100;
+  const percent = Math.min(96, rawPercent);
+  const remainingSec = Math.max(1, Math.ceil((ESTIMATED_LOAD_MS - elapsed) / 1000));
+  const isTakingLong = elapsed > ESTIMATED_LOAD_MS;
+
+  // Scelgo il set di battute in base a quanto siamo avanti: prima prendono in
+  // giro chi ha fretta, a metà il gergo stesso, alla fine il ritardo eterno.
+  const pool = percent < 35 ? LOADING_MESSAGES_EARLY : percent < 75 ? LOADING_MESSAGES_MID : LOADING_MESSAGES_LATE;
+  const message = pool[msgIndex % pool.length];
+
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 px-6"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 px-6"
       style={{ background: "#241F3D" }}
     >
       <Mascot mood="neutral" />
       <p className="display text-xs text-center" style={{ color: "#E8A33D", lineHeight: 1.8 }}>
-        {LOADING_MESSAGES[msgIndex]}
+        {message}
       </p>
-      <div className="w-40 h-2 rounded-full overflow-hidden" style={{ background: "#3B3357" }}>
+
+      <div className="w-56 h-3" style={{ background: "#3B3357", border: "2px solid #E8A33D" }}>
         <div
           style={{
-            width: "40%",
+            width: `${percent}%`,
             height: "100%",
             background: "#E8A33D",
-            animation: "loading-slide 1.1s ease-in-out infinite",
+            transition: "width 150ms linear",
           }}
         />
       </div>
-      <style>{`
-        @keyframes loading-slide {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(350%); }
-        }
-      `}</style>
+
+      <p className="mono text-xs" style={{ color: "#C9A66B" }}>
+        {isTakingLong
+          ? "quasi pronto, un attimo ancora..."
+          : `circa ${remainingSec} second${remainingSec === 1 ? "o" : "i"}...`}
+      </p>
     </div>
   );
 }
